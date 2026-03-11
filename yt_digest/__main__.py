@@ -74,8 +74,8 @@ async def run_pipeline(config: AppConfig, db: Database, dry_run: bool = False) -
             db.insert_video(video)
             db.store_summary(video_id, summary, backend)
             logger.info("Summarized {} via {}", video_id, backend)
-        except Exception:
-            logger.exception("Failed to summarize {}, skipping", video_id)
+        except Exception as e:
+            logger.warning("Failed to summarize {}, skipping: {}", video_id, e)
 
     # Also re-summarize any previously inserted but unsummarized videos (crash recovery)
     for video_row in videos_needing_summary:
@@ -85,8 +85,8 @@ async def run_pipeline(config: AppConfig, db: Database, dry_run: bool = False) -
             summary, backend = await summarizer.summarize(url)
             db.store_summary(video_id, summary, backend)
             logger.info("Summarized {} via {} (retry)", video_id, backend)
-        except Exception:
-            logger.exception("Failed to summarize {} on retry, marking unavailable", video_id)
+        except Exception as e:
+            logger.warning("Failed to summarize {} on retry, marking unavailable: {}", video_id, e)
             db.store_summary(video_id, "Summary unavailable", "none")
 
     # 3. Build summaries list from all unprocessed videos

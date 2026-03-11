@@ -55,8 +55,8 @@ def fetch_new_videos(db: Database) -> list[VideoInfo]:
             for video in entries:
                 if not db.video_exists(video.video_id):
                     new_videos.append(video)
-        except Exception:
-            logger.exception("Failed to fetch RSS for channel {}", ch["youtube_handle"])
+        except Exception as e:
+            logger.warning("Failed to fetch RSS for channel {}: {}", ch["youtube_handle"], e)
             continue
 
     logger.info(

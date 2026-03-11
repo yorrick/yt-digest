@@ -21,15 +21,16 @@ class FallbackSummarizer:
             try:
                 result = await self.primary.summarize(video_url)
                 return result, self.primary.backend_name
-            except AuthError:
-                logger.opt(exception=True).warning(
-                    "Primary summarizer auth failed, falling back to Claude for entire run"
+            except AuthError as e:
+                logger.warning(
+                    "Primary summarizer auth failed, falling back to Claude for entire run: {}", e
                 )
                 self._primary_auth_failed = True
-            except Exception:
-                logger.opt(exception=True).warning(
-                    "Primary summarizer failed for {}, trying fallback",
+            except Exception as e:
+                logger.warning(
+                    "Primary summarizer failed for {}, trying fallback: {}",
                     video_url,
+                    e,
                 )
 
         result = await self.fallback.summarize(video_url)

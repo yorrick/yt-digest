@@ -60,5 +60,5 @@ def init_channels(db: Database) -> None:
             )
             db.insert_channel(channel)
             logger.info("Added channel {} (ID: {})", name, channel_id)
-        except Exception:
-            logger.exception("Failed to add channel {}", handle)
+        except Exception as e:
+            logger.warning("Failed to add channel {}: {}", handle, e)
