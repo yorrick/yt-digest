@@ -54,7 +54,6 @@ def fetch_new_videos(db: Database) -> list[VideoInfo]:
             entries = parse_feed_entries(xml, channel_pk=ch["id"], since=since)
             for video in entries:
                 if not db.video_exists(video.video_id):
-                    db.insert_video(video)
                     new_videos.append(video)
         except Exception:
             logger.exception("Failed to fetch RSS for channel {}", ch["youtube_handle"])

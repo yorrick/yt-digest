@@ -1,6 +1,9 @@
 # yt_digest/summarizer/claude.py
 from claude_code_sdk import ClaudeCodeOptions, query, AssistantMessage, TextBlock
+from claude_code_sdk._errors import MessageParseError
+from loguru import logger
 from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound
 
 from yt_digest.summarizer.base import Summarizer
 
@@ -14,6 +17,10 @@ TRANSCRIPT:
 Respond with ONLY the summary, no preamble or formatting."""
 
 
+class NoTranscriptError(Exception):
+    """Video has no available transcript."""
+
+
 class ClaudeCodeSummarizer(Summarizer):
     backend_name = "claude"
 
@@ -23,7 +30,12 @@ class ClaudeCodeSummarizer(Summarizer):
     async def summarize(self, video_url: str) -> str:
         video_id = video_url.split("v=")[-1]
         api = YouTubeTranscriptApi()
-        transcript = api.fetch(video_id)
+        try:
+            transcript = api.fetch(video_id)
+        except (TranscriptsDisabled, NoTranscriptFound) as e:
+            raise NoTranscriptError(
+                f"No transcript available for {video_url}: {e}"
+            ) from e
         transcript_text = " ".join(snippet.text for snippet in transcript)
 
         prompt = SUMMARY_PROMPT_TEMPLATE.format(transcript=transcript_text[:50000])
@@ -34,11 +46,14 @@ class ClaudeCodeSummarizer(Summarizer):
         )
 
         result_text = ""
-        async for message in query(prompt=prompt, options=options):
-            if isinstance(message, AssistantMessage):
-                for block in message.content:
-                    if isinstance(block, TextBlock):
-                        result_text += block.text
+        try:
+            async for message in query(prompt=prompt, options=options):
+                if isinstance(message, AssistantMessage):
+                    for block in message.content:
+                        if isinstance(block, TextBlock):
+                            result_text += block.text
+        except MessageParseError:
+            logger.warning("Claude Code SDK parse error during summarization, using collected text so far")
 
         if not result_text.strip():
             raise RuntimeError("Claude Code SDK returned empty response")

@@ -2,6 +2,8 @@
 import json
 
 from claude_code_sdk import ClaudeCodeOptions, query, AssistantMessage, TextBlock
+from claude_code_sdk._errors import MessageParseError
+from loguru import logger
 
 from yt_digest.models import VideoSummary, ClusterResult, ClusterGroup
 
@@ -68,10 +70,13 @@ async def cluster_summaries(
 
     options = ClaudeCodeOptions(max_turns=1, model=model)
     result_text = ""
-    async for message in query(prompt=prompt, options=options):
-        if isinstance(message, AssistantMessage):
-            for block in message.content:
-                if isinstance(block, TextBlock):
-                    result_text += block.text
+    try:
+        async for message in query(prompt=prompt, options=options):
+            if isinstance(message, AssistantMessage):
+                for block in message.content:
+                    if isinstance(block, TextBlock):
+                        result_text += block.text
+    except MessageParseError:
+        logger.warning("Claude Code SDK parse error during clustering, using collected text so far")
 
     return _parse_cluster_response(result_text, len(summaries))

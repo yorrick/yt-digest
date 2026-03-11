@@ -61,20 +61,32 @@ async def run_pipeline(config: AppConfig, db: Database, dry_run: bool = False) -
         len(videos_with_summary),
     )
 
-    # 2. Summarize videos that need it
+    # 2. Summarize new videos
     primary = NotebookLMSummarizer()
     fallback = ClaudeCodeSummarizer(model=config.claude.model)
     summarizer = FallbackSummarizer(primary, fallback)
 
+    for video in new_videos:
+        url = video.url
+        video_id = video.video_id
+        try:
+            summary, backend = await summarizer.summarize(url)
+            db.insert_video(video)
+            db.store_summary(video_id, summary, backend)
+            logger.info("Summarized {} via {}", video_id, backend)
+        except Exception:
+            logger.exception("Failed to summarize {}, skipping", video_id)
+
+    # Also re-summarize any previously inserted but unsummarized videos (crash recovery)
     for video_row in videos_needing_summary:
         url = video_row["url"]
         video_id = video_row["video_id"]
         try:
             summary, backend = await summarizer.summarize(url)
             db.store_summary(video_id, summary, backend)
-            logger.info("Summarized {} via {}", video_id, backend)
+            logger.info("Summarized {} via {} (retry)", video_id, backend)
         except Exception:
-            logger.exception("Failed to summarize {}", video_id)
+            logger.exception("Failed to summarize {} on retry, marking unavailable", video_id)
             db.store_summary(video_id, "Summary unavailable", "none")
 
     # 3. Build summaries list from all unprocessed videos
