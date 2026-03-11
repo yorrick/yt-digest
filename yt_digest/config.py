@@ -8,11 +8,6 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 
 
-class SummarizerConfig(BaseModel):
-    primary: str = "notebooklm"
-    fallback: str = "claude"
-
-
 class SlackConfig(BaseModel):
     webhook_url: str
 
@@ -22,7 +17,6 @@ class ClaudeConfig(BaseModel):
 
 
 class AppConfig(BaseModel):
-    summarizer: SummarizerConfig = SummarizerConfig()
     slack: SlackConfig
     claude: ClaudeConfig = ClaudeConfig()
     db_path: str = "~/.yt-digest/data.db"

@@ -103,8 +103,7 @@ class Database:
     def mark_processed(self, video_ids: list[str], cluster: str) -> None:
         now = datetime.now(timezone.utc).isoformat()
         with self._connect() as conn:
-            for vid in video_ids:
-                conn.execute(
-                    "UPDATE videos SET processed_at = ?, cluster = ? WHERE video_id = ?",
-                    (now, cluster, vid),
-                )
+            conn.executemany(
+                "UPDATE videos SET processed_at = ?, cluster = ? WHERE video_id = ?",
+                [(now, cluster, vid) for vid in video_ids],
+            )

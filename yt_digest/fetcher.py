@@ -1,14 +1,12 @@
 # yt_digest/fetcher.py
-import logging
 from datetime import datetime, timedelta, timezone
 from xml.etree import ElementTree as ET
 
 import httpx
+from loguru import logger
 
 from yt_digest.db import Database
 from yt_digest.models import VideoInfo
-
-logger = logging.getLogger(__name__)
 
 ATOM_NS = "http://www.w3.org/2005/Atom"
 YT_NS = "http://www.youtube.com/xml/schemas/2015"
@@ -59,10 +57,10 @@ def fetch_new_videos(db: Database) -> list[VideoInfo]:
                     db.insert_video(video)
                     new_videos.append(video)
         except Exception:
-            logger.exception("Failed to fetch RSS for channel %s", ch["youtube_handle"])
+            logger.exception("Failed to fetch RSS for channel {}", ch["youtube_handle"])
             continue
 
     logger.info(
-        "Found %d new videos across %d channels", len(new_videos), len(channels)
+        "Found {} new videos across {} channels", len(new_videos), len(channels)
     )
     return new_videos

@@ -1,12 +1,9 @@
 # yt_digest/summarizer/claude.py
-import logging
-
 from claude_code_sdk import ClaudeCodeOptions, query, AssistantMessage, TextBlock
+from loguru import logger
 from youtube_transcript_api import YouTubeTranscriptApi
 
 from yt_digest.summarizer.base import Summarizer
-
-logger = logging.getLogger(__name__)
 
 SUMMARY_PROMPT_TEMPLATE = """Summarize the following YouTube video transcript in approximately 10 sentences.
 Cover the key points, insights, and takeaways. Be specific about what was said.
@@ -19,6 +16,8 @@ Respond with ONLY the summary, no preamble or formatting."""
 
 
 class ClaudeCodeSummarizer(Summarizer):
+    backend_name = "claude"
+
     def __init__(self, model: str = "claude-sonnet-4-20250514"):
         self.model = model
 

@@ -1,12 +1,10 @@
 # yt_digest/clusterer.py
 import json
-import logging
 
 from claude_code_sdk import ClaudeCodeOptions, query, AssistantMessage, TextBlock
+from loguru import logger
 
 from yt_digest.models import VideoSummary, ClusterResult, ClusterGroup
-
-logger = logging.getLogger(__name__)
 
 CLUSTER_PROMPT_TEMPLATE = """You are given a list of YouTube video summaries. Group them into 2-4 topic clusters based on their content.
 

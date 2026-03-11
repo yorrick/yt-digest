@@ -1,12 +1,10 @@
 # yt_digest/slack.py
-import logging
 from datetime import date
 
 import httpx
+from loguru import logger
 
 from yt_digest.models import VideoSummary, ClusterResult
-
-logger = logging.getLogger(__name__)
 
 EMOJI_MAP = {
     0: "\U0001f916",  # robot

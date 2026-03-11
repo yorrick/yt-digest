@@ -5,10 +5,6 @@ from yt_digest.config import load_config
 def test_load_config_from_yaml(tmp_path, monkeypatch):
     config_file = tmp_path / "config.yaml"
     config_file.write_text("""
-summarizer:
-  primary: notebooklm
-  fallback: claude
-
 slack:
   webhook_url: ${SLACK_WEBHOOK_URL}
 
@@ -19,8 +15,6 @@ db_path: ~/.yt-digest/data.db
 """)
     monkeypatch.setenv("SLACK_WEBHOOK_URL", "https://hooks.slack.com/test")
     config = load_config(str(config_file))
-    assert config.summarizer.primary == "notebooklm"
-    assert config.summarizer.fallback == "claude"
     assert config.slack.webhook_url == "https://hooks.slack.com/test"
     assert config.claude.model == "claude-sonnet-4-20250514"
 
@@ -28,10 +22,6 @@ db_path: ~/.yt-digest/data.db
 def test_config_env_var_substitution(tmp_path, monkeypatch):
     config_file = tmp_path / "config.yaml"
     config_file.write_text("""
-summarizer:
-  primary: notebooklm
-  fallback: claude
-
 slack:
   webhook_url: ${SLACK_WEBHOOK_URL}
 

@@ -1,8 +1,6 @@
 # yt_digest/summarizer/__init__.py
-import logging
+from loguru import logger
 from yt_digest.summarizer.base import Summarizer
-
-logger = logging.getLogger(__name__)
 
 
 class FallbackSummarizer:
@@ -21,13 +19,12 @@ class FallbackSummarizer:
         if not self._primary_failed:
             try:
                 result = await self.primary.summarize(video_url)
-                return result, "notebooklm"
+                return result, self.primary.backend_name
             except Exception:
-                logger.warning(
-                    "Primary summarizer failed, falling back to Claude for this run",
-                    exc_info=True,
+                logger.opt(exception=True).warning(
+                    "Primary summarizer failed, falling back to Claude for this run"
                 )
                 self._primary_failed = True
 
         result = await self.fallback.summarize(video_url)
-        return result, "claude"
+        return result, self.fallback.backend_name

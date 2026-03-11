@@ -1,12 +1,13 @@
 # yt_digest/__main__.py
 import argparse
 import asyncio
-import logging
+import sys
 from datetime import date
-from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 
-from yt_digest.config import load_config
+from loguru import logger
+
+from yt_digest.config import AppConfig, load_config
 from yt_digest.db import Database
 from yt_digest.fetcher import fetch_new_videos
 from yt_digest.clusterer import cluster_summaries
@@ -16,25 +17,15 @@ from yt_digest.summarizer import FallbackSummarizer
 from yt_digest.summarizer.notebooklm import NotebookLMSummarizer
 from yt_digest.summarizer.claude import ClaudeCodeSummarizer
 
-logger = logging.getLogger("yt_digest")
-
 
 def setup_logging() -> None:
     log_dir = Path("~/.yt-digest").expanduser()
     log_dir.mkdir(parents=True, exist_ok=True)
     log_file = log_dir / "yt-digest.log"
 
-    formatter = logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
-
-    file_handler = TimedRotatingFileHandler(log_file, when="D", backupCount=7)
-    file_handler.setFormatter(formatter)
-
-    stream_handler = logging.StreamHandler()
-    stream_handler.setFormatter(formatter)
-
-    logger.setLevel(logging.INFO)
-    logger.addHandler(file_handler)
-    logger.addHandler(stream_handler)
+    logger.remove()
+    logger.add(sys.stderr, level="INFO")
+    logger.add(log_file, level="INFO", rotation="1 day", retention=7)
 
 
 def parse_args() -> argparse.Namespace:
@@ -53,7 +44,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-async def run_pipeline(config, db: Database, dry_run: bool = False) -> None:
+async def run_pipeline(config: AppConfig, db: Database, dry_run: bool = False) -> None:
     # 1. Fetch new videos
     logger.info("Fetching new videos...")
     new_videos = fetch_new_videos(db)
@@ -64,7 +55,7 @@ async def run_pipeline(config, db: Database, dry_run: bool = False) -> None:
     videos_with_summary = [v for v in unprocessed if v["summary"] is not None]
 
     logger.info(
-        "%d new videos, %d need summaries, %d have summaries from previous run",
+        "{} new videos, {} need summaries, {} have summaries from previous run",
         len(new_videos),
         len(videos_needing_summary),
         len(videos_with_summary),
@@ -81,9 +72,9 @@ async def run_pipeline(config, db: Database, dry_run: bool = False) -> None:
         try:
             summary, backend = await summarizer.summarize(url)
             db.store_summary(video_id, summary, backend)
-            logger.info("Summarized %s via %s", video_id, backend)
+            logger.info("Summarized {} via {}", video_id, backend)
         except Exception:
-            logger.exception("Failed to summarize %s", video_id)
+            logger.exception("Failed to summarize {}", video_id)
             db.store_summary(video_id, "Summary unavailable", "none")
 
     # 3. Build summaries list from all unprocessed videos

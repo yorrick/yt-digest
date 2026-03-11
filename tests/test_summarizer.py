@@ -5,6 +5,8 @@ from yt_digest.summarizer.base import Summarizer
 
 
 class MockPrimary(Summarizer):
+    backend_name = "notebooklm"
+
     def __init__(self, fail: bool = False):
         self.fail = fail
         self.call_count = 0
@@ -17,6 +19,8 @@ class MockPrimary(Summarizer):
 
 
 class MockFallback(Summarizer):
+    backend_name = "claude"
+
     def __init__(self):
         self.call_count = 0
 

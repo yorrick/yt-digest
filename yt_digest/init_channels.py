@@ -1,13 +1,11 @@
 # yt_digest/init_channels.py
-import logging
 import re
 
 import httpx
+from loguru import logger
 
 from yt_digest.db import Database
 from yt_digest.models import ChannelInfo
-
-logger = logging.getLogger(__name__)
 
 INITIAL_CHANNELS = [
     ("Simon Hoiberg", "@SimonHoiberg"),
@@ -48,21 +46,19 @@ def resolve_channel_id(handle: str) -> str:
 
 
 def init_channels(db: Database) -> None:
+    existing_handles = {ch["youtube_handle"] for ch in db.get_active_channels()}
     for name, handle in INITIAL_CHANNELS:
         try:
-            # Check if already exists
-            channels = db.get_active_channels()
-            existing_handles = {ch["youtube_handle"] for ch in channels}
             if handle in existing_handles:
-                logger.info("Channel %s already exists, skipping", handle)
+                logger.info("Channel {} already exists, skipping", handle)
                 continue
 
-            logger.info("Resolving channel ID for %s...", handle)
+            logger.info("Resolving channel ID for {}...", handle)
             channel_id = resolve_channel_id(handle)
             channel = ChannelInfo(
                 name=name, youtube_handle=handle, channel_id=channel_id
             )
             db.insert_channel(channel)
-            logger.info("Added channel %s (ID: %s)", name, channel_id)
+            logger.info("Added channel {} (ID: {})", name, channel_id)
         except Exception:
-            logger.exception("Failed to add channel %s", handle)
+            logger.exception("Failed to add channel {}", handle)

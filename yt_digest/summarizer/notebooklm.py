@@ -1,10 +1,7 @@
 # yt_digest/summarizer/notebooklm.py
-import logging
-
+from loguru import logger
 from notebooklm import NotebookLMClient
 from yt_digest.summarizer.base import Summarizer
-
-logger = logging.getLogger(__name__)
 
 SUMMARY_PROMPT = (
     "Summarize this video in approximately 10 sentences. "
@@ -14,6 +11,8 @@ SUMMARY_PROMPT = (
 
 
 class NotebookLMSummarizer(Summarizer):
+    backend_name = "notebooklm"
+
     async def summarize(self, video_url: str) -> str:
         async with await NotebookLMClient.from_storage() as client:
             nb = await client.notebooks.create("yt-digest-temp")
@@ -25,4 +24,4 @@ class NotebookLMSummarizer(Summarizer):
                 try:
                     await client.notebooks.delete(nb.id)
                 except Exception:
-                    logger.warning("Failed to clean up notebook %s", nb.id)
+                    logger.warning("Failed to clean up notebook {}", nb.id)
