@@ -1,6 +1,5 @@
 # yt_digest/summarizer/claude.py
 from claude_code_sdk import ClaudeCodeOptions, query, AssistantMessage, TextBlock
-from loguru import logger
 from youtube_transcript_api import YouTubeTranscriptApi
 
 from yt_digest.summarizer.base import Summarizer

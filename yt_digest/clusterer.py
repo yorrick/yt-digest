@@ -2,7 +2,6 @@
 import json
 
 from claude_code_sdk import ClaudeCodeOptions, query, AssistantMessage, TextBlock
-from loguru import logger
 
 from yt_digest.models import VideoSummary, ClusterResult, ClusterGroup
 

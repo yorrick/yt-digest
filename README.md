@@ -30,20 +30,20 @@ git clone https://github.com/yorrick/yt-digest.git
 cd yt-digest
 
 # Install
-pip install -e ".[dev]"
+uv sync --all-extras
 
 # Configure
 cp .env.example .env
 # Edit .env with your Slack webhook URL
 
 # Initialize database and seed channels
-python -m yt_digest --init
+uv run python -m yt_digest --init
 
 # Test run (prints to stdout)
-python -m yt_digest --dry-run
+uv run python -m yt_digest --dry-run
 
 # Production run
-python -m yt_digest
+uv run python -m yt_digest
 ```
 
 ## CLI Options
@@ -59,7 +59,7 @@ python -m yt_digest
 ```bash
 crontab -e
 # Add:
-0 8 * * * cd /path/to/yt-digest && /path/to/python -m yt_digest
+0 8 * * * cd /path/to/yt-digest && uv run python -m yt_digest
 ```
 
 ## Requirements
@@ -81,6 +81,6 @@ Secrets go in `.env` (gitignored).
 ## Testing
 
 ```bash
-pip install -e ".[dev]"
-pytest -v
+uv sync --all-extras
+uv run pytest -v
 ```
