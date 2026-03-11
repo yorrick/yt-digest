@@ -29,7 +29,10 @@ class NotebookLMSummarizer(Summarizer):
             try:
                 await client.sources.add_url(nb.id, video_url, wait=True)
                 result = await client.chat.ask(nb.id, SUMMARY_PROMPT)
-                return result.answer
+                answer = result.answer
+                if "couldn't find enough context" in answer.lower() or "i'm sorry" in answer.lower():
+                    raise RuntimeError(f"NotebookLM returned a non-summary response: {answer[:100]}")
+                return answer
             finally:
                 try:
                     await client.notebooks.delete(nb.id)
