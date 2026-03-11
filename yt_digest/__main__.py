@@ -2,7 +2,6 @@
 import argparse
 import asyncio
 import logging
-import sys
 from datetime import date
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
@@ -39,9 +38,17 @@ def setup_logging() -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="yt-digest: Daily YouTube channel monitor")
-    parser.add_argument("--init", action="store_true", help="Initialize DB and seed channels")
-    parser.add_argument("--dry-run", action="store_true", help="Print digest to stdout instead of posting to Slack")
+    parser = argparse.ArgumentParser(
+        description="yt-digest: Daily YouTube channel monitor"
+    )
+    parser.add_argument(
+        "--init", action="store_true", help="Initialize DB and seed channels"
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print digest to stdout instead of posting to Slack",
+    )
     parser.add_argument("--config", default="config.yaml", help="Path to config file")
     return parser.parse_args()
 
@@ -58,7 +65,9 @@ async def run_pipeline(config, db: Database, dry_run: bool = False) -> None:
 
     logger.info(
         "%d new videos, %d need summaries, %d have summaries from previous run",
-        len(new_videos), len(videos_needing_summary), len(videos_with_summary),
+        len(new_videos),
+        len(videos_needing_summary),
+        len(videos_with_summary),
     )
 
     # 2. Summarize videos that need it
@@ -122,6 +131,7 @@ def main() -> None:
 
     if args.init:
         from yt_digest.init_channels import init_channels
+
         db.init()
         init_channels(db)
         logger.info("Database initialized and channels seeded")

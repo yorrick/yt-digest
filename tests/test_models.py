@@ -1,6 +1,12 @@
 # tests/test_models.py
 from datetime import datetime, timezone
-from yt_digest.models import ChannelInfo, VideoInfo, VideoSummary, ClusterResult, ClusterGroup
+from yt_digest.models import (
+    ChannelInfo,
+    VideoInfo,
+    VideoSummary,
+    ClusterResult,
+    ClusterGroup,
+)
 
 
 def test_channel_info_rss_url():
@@ -9,7 +15,10 @@ def test_channel_info_rss_url():
         youtube_handle="@Fireship",
         channel_id="UCsBjURrPoezykLs9EqgamOA",
     )
-    assert ch.rss_url == "https://www.youtube.com/feeds/videos.xml?channel_id=UCsBjURrPoezykLs9EqgamOA"
+    assert (
+        ch.rss_url
+        == "https://www.youtube.com/feeds/videos.xml?channel_id=UCsBjURrPoezykLs9EqgamOA"
+    )
 
 
 def test_video_info_url():
@@ -35,9 +44,11 @@ def test_video_summary():
 
 
 def test_cluster_result():
-    cr = ClusterResult(clusters=[
-        ClusterGroup(name="AI Coding", video_indices=[0, 1]),
-        ClusterGroup(name="Marketing", video_indices=[2]),
-    ])
+    cr = ClusterResult(
+        clusters=[
+            ClusterGroup(name="AI Coding", video_indices=[0, 1]),
+            ClusterGroup(name="Marketing", video_indices=[2]),
+        ]
+    )
     assert len(cr.clusters) == 2
     assert cr.clusters[0].video_indices == [0, 1]

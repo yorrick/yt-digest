@@ -23,7 +23,10 @@ class FallbackSummarizer:
                 result = await self.primary.summarize(video_url)
                 return result, "notebooklm"
             except Exception:
-                logger.warning("Primary summarizer failed, falling back to Claude for this run", exc_info=True)
+                logger.warning(
+                    "Primary summarizer failed, falling back to Claude for this run",
+                    exc_info=True,
+                )
                 self._primary_failed = True
 
         result = await self.fallback.summarize(video_url)

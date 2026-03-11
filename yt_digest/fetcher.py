@@ -34,12 +34,14 @@ def parse_feed_entries(
         pub_dt = datetime.fromisoformat(published.text)
         if since and pub_dt < since:
             continue
-        entries.append(VideoInfo(
-            video_id=video_id.text,
-            channel_pk=channel_pk,
-            title=title.text,
-            published_at=pub_dt,
-        ))
+        entries.append(
+            VideoInfo(
+                video_id=video_id.text,
+                channel_pk=channel_pk,
+                title=title.text,
+                published_at=pub_dt,
+            )
+        )
     return entries
 
 
@@ -60,5 +62,7 @@ def fetch_new_videos(db: Database) -> list[VideoInfo]:
             logger.exception("Failed to fetch RSS for channel %s", ch["youtube_handle"])
             continue
 
-    logger.info("Found %d new videos across %d channels", len(new_videos), len(channels))
+    logger.info(
+        "Found %d new videos across %d channels", len(new_videos), len(channels)
+    )
     return new_videos

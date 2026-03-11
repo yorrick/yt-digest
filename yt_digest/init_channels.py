@@ -38,7 +38,9 @@ def resolve_channel_id(handle: str) -> str:
         return match.group(1)
 
     # Fallback: look in meta tags
-    match = re.search(r'<meta itemprop="channelId" content="(UC[a-zA-Z0-9_-]+)"', resp.text)
+    match = re.search(
+        r'<meta itemprop="channelId" content="(UC[a-zA-Z0-9_-]+)"', resp.text
+    )
     if match:
         return match.group(1)
 
@@ -57,7 +59,9 @@ def init_channels(db: Database) -> None:
 
             logger.info("Resolving channel ID for %s...", handle)
             channel_id = resolve_channel_id(handle)
-            channel = ChannelInfo(name=name, youtube_handle=handle, channel_id=channel_id)
+            channel = ChannelInfo(
+                name=name, youtube_handle=handle, channel_id=channel_id
+            )
             db.insert_channel(channel)
             logger.info("Added channel %s (ID: %s)", name, channel_id)
         except Exception:

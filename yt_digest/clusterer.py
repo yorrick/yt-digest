@@ -21,9 +21,11 @@ Respond with ONLY the JSON array."""
 
 
 def _parse_cluster_response(response: str, num_videos: int) -> ClusterResult:
-    fallback = ClusterResult(clusters=[
-        ClusterGroup(name="Today's Videos", video_indices=list(range(num_videos)))
-    ])
+    fallback = ClusterResult(
+        clusters=[
+            ClusterGroup(name="Today's Videos", video_indices=list(range(num_videos)))
+        ]
+    )
     try:
         # Strip markdown code fences if present
         cleaned = response.strip()
@@ -53,9 +55,13 @@ async def cluster_summaries(
         return ClusterResult(clusters=[])
 
     if len(summaries) <= 2:
-        return ClusterResult(clusters=[
-            ClusterGroup(name="Today's Videos", video_indices=list(range(len(summaries))))
-        ])
+        return ClusterResult(
+            clusters=[
+                ClusterGroup(
+                    name="Today's Videos", video_indices=list(range(len(summaries)))
+                )
+            ]
+        )
 
     videos_text = "\n".join(
         f"[{i}] {s.title} ({s.channel_name}): {s.summary[:200]}"

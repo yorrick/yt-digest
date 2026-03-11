@@ -37,14 +37,20 @@ def test_parse_feed_filters_by_date():
 
 
 def test_fetch_new_videos_skips_existing(db):
-    channel = ChannelInfo(name="Fireship", youtube_handle="@Fireship", channel_id="UCsBjURrPoezykLs9EqgamOA")
+    channel = ChannelInfo(
+        name="Fireship",
+        youtube_handle="@Fireship",
+        channel_id="UCsBjURrPoezykLs9EqgamOA",
+    )
     db.insert_channel(channel)
     channels = db.get_active_channels()
     channel_pk = channels[0]["id"]
 
     # Pre-insert a video so it's "already seen"
     existing = VideoInfo(
-        video_id="abc123", channel_pk=channel_pk, title="Existing",
+        video_id="abc123",
+        channel_pk=channel_pk,
+        title="Existing",
         published_at=datetime(2026, 3, 11, tzinfo=timezone.utc),
     )
     db.insert_video(existing)

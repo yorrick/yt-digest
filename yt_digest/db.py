@@ -46,7 +46,13 @@ class Database:
         with self._connect() as conn:
             conn.execute(
                 "INSERT INTO channels (name, youtube_handle, channel_id, rss_url, active) VALUES (?, ?, ?, ?, ?)",
-                (channel.name, channel.youtube_handle, channel.channel_id, channel.rss_url, channel.active),
+                (
+                    channel.name,
+                    channel.youtube_handle,
+                    channel.channel_id,
+                    channel.rss_url,
+                    channel.active,
+                ),
             )
 
     def get_active_channels(self) -> list[sqlite3.Row]:
@@ -55,19 +61,29 @@ class Database:
 
     def video_exists(self, video_id: str) -> bool:
         with self._connect() as conn:
-            row = conn.execute("SELECT 1 FROM videos WHERE video_id = ?", (video_id,)).fetchone()
+            row = conn.execute(
+                "SELECT 1 FROM videos WHERE video_id = ?", (video_id,)
+            ).fetchone()
             return row is not None
 
     def insert_video(self, video: VideoInfo) -> None:
         with self._connect() as conn:
             conn.execute(
                 "INSERT INTO videos (video_id, channel_pk, title, url, published_at) VALUES (?, ?, ?, ?, ?)",
-                (video.video_id, video.channel_pk, video.title, video.url, video.published_at.isoformat()),
+                (
+                    video.video_id,
+                    video.channel_pk,
+                    video.title,
+                    video.url,
+                    video.published_at.isoformat(),
+                ),
             )
 
     def get_video(self, video_id: str) -> sqlite3.Row | None:
         with self._connect() as conn:
-            return conn.execute("SELECT * FROM videos WHERE video_id = ?", (video_id,)).fetchone()
+            return conn.execute(
+                "SELECT * FROM videos WHERE video_id = ?", (video_id,)
+            ).fetchone()
 
     def get_unprocessed_videos(self) -> list[sqlite3.Row]:
         with self._connect() as conn:

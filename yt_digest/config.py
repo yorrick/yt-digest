@@ -30,12 +30,14 @@ class AppConfig(BaseModel):
 
 def _substitute_env_vars(text: str) -> str:
     """Replace ${VAR_NAME} with environment variable values."""
+
     def replacer(match: re.Match) -> str:
         var_name = match.group(1)
         value = os.environ.get(var_name)
         if value is None:
             raise ValueError(f"Environment variable {var_name} is not set")
         return value
+
     return re.sub(r"\$\{(\w+)\}", replacer, text)
 
 

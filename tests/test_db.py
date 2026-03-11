@@ -33,7 +33,9 @@ def test_insert_duplicate_channel_raises(db):
 
 def test_insert_video_and_check_exists(db):
     channel = ChannelInfo(
-        name="Fireship", youtube_handle="@Fireship", channel_id="UCsBjURrPoezykLs9EqgamOA"
+        name="Fireship",
+        youtube_handle="@Fireship",
+        channel_id="UCsBjURrPoezykLs9EqgamOA",
     )
     db.insert_channel(channel)
     channels = db.get_active_channels()
@@ -52,7 +54,9 @@ def test_insert_video_and_check_exists(db):
 
 def test_get_unprocessed_videos(db):
     channel = ChannelInfo(
-        name="Fireship", youtube_handle="@Fireship", channel_id="UCsBjURrPoezykLs9EqgamOA"
+        name="Fireship",
+        youtube_handle="@Fireship",
+        channel_id="UCsBjURrPoezykLs9EqgamOA",
     )
     db.insert_channel(channel)
     channels = db.get_active_channels()
@@ -73,7 +77,9 @@ def test_get_unprocessed_videos(db):
 
 def test_store_summary_and_mark_processed(db):
     channel = ChannelInfo(
-        name="Fireship", youtube_handle="@Fireship", channel_id="UCsBjURrPoezykLs9EqgamOA"
+        name="Fireship",
+        youtube_handle="@Fireship",
+        channel_id="UCsBjURrPoezykLs9EqgamOA",
     )
     db.insert_channel(channel)
     channels = db.get_active_channels()
