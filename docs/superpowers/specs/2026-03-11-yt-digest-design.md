@@ -11,8 +11,8 @@ A Python CLI app run daily via cron on an Ubuntu desktop. Monitors YouTube chann
 ```
 
 1. **Fetch** — Pull RSS feeds from monitored YouTube channels, filter to videos published in the last 48 hours, compare against SQLite DB of processed videos, yield new video URLs
-2. **Summarize** — Pass each new video URL to NotebookLM via `notebooklm-py` (primary). On failure, fall back to Claude via Anthropic SDK (fetches transcript with `youtube-transcript-api`, then summarizes). ~10 sentences per video.
-3. **Cluster** — Group summaries into 2-4 dynamic topic clusters using a single Claude API call
+2. **Summarize** — Pass each new video URL to NotebookLM via `notebooklm-py` (primary). On failure, fall back to Claude Code SDK (fetches transcript with `youtube-transcript-api`, then summarizes). ~10 sentences per video.
+3. **Cluster** — Group summaries into 2-4 dynamic topic clusters using a single Claude Code SDK call
 4. **Post** — Format clustered summaries into a single Slack digest message via Incoming Webhook with video titles linking to sources
 
 ## Channels (initial set)
@@ -77,13 +77,14 @@ class NotebookLMSummarizer(Summarizer):
     # Uses notebooklm-py: create notebook, add YouTube URL as source,
     # chat to get summary, clean up notebook
 
-class ClaudeSummarizer(Summarizer):
+class ClaudeCodeSummarizer(Summarizer):
     # Fallback: fetch transcript via youtube-transcript-api,
-    # send to Claude API with summarization prompt
+    # send to Claude Code SDK (uses Max subscription, no API key needed)
+    # Requires ANTHROPIC_API_KEY to be UNSET so Claude Code uses Max sub auth
 ```
 
 - Primary: NotebookLMSummarizer
-- Fallback: ClaudeSummarizer (auto-triggered on NotebookLM failure)
+- Fallback: ClaudeCodeSummarizer (auto-triggered on NotebookLM failure)
 - Summarizer selection via config, with automatic fallback
 - Videos are summarized sequentially (no concurrent API calls) to avoid rate limiting on notebooklm-py
 - NotebookLM auth: `notebooklm-py` uses Google cookie-based auth. Credentials stored in `.env`. Auth may expire — on auth failure, fall back to Claude for the entire run and log a warning.
@@ -91,7 +92,7 @@ class ClaudeSummarizer(Summarizer):
 
 ## Clustering
 
-Single Claude API call after all summaries are generated. Prompt sends list of (title, summary) pairs, asks Claude to return a JSON array of clusters, each with a `name` and list of video indices. Target 2-4 clusters, but 1 cluster is fine if there's only 1-2 videos. If Claude returns malformed JSON, fall back to a single "Today's Videos" cluster with all videos.
+Single Claude Code SDK call after all summaries are generated. Prompt sends list of (title, summary) pairs, asks Claude to return a JSON array of clusters, each with a `name` and list of video indices. Target 2-4 clusters, but 1 cluster is fine if there's only 1-2 videos. If Claude returns malformed JSON, fall back to a single "Today's Videos" cluster with all videos.
 
 ## Slack Output Format
 
@@ -131,7 +132,8 @@ notebooklm:
   # notebooklm-py auth config
 
 claude:
-  api_key: ${ANTHROPIC_API_KEY}
+  # Uses Claude Code SDK with Max subscription (no API key needed)
+  # ANTHROPIC_API_KEY must be UNSET to use Max sub auth
   model: claude-sonnet-4-20250514
 
 db_path: ~/.yt-digest/data.db
@@ -152,7 +154,7 @@ yt-digest/
 │   │   ├── __init__.py
 │   │   ├── base.py           # ABC
 │   │   ├── notebooklm.py     # notebooklm-py implementation
-│   │   └── claude.py         # Anthropic SDK fallback
+│   │   └── claude.py         # Claude Code SDK fallback (Max sub)
 │   ├── clusterer.py          # Claude-based topic clustering
 │   ├── slack.py              # Webhook posting
 │   └── db.py                 # SQLite operations
@@ -185,7 +187,7 @@ yt-digest/
 ## Dependencies
 
 - `notebooklm-py` — NotebookLM unofficial API
-- `anthropic` — Claude API (fallback summarizer + clustering)
+- `claude-code-sdk` — Claude Code SDK (fallback summarizer + clustering, uses Max subscription)
 - `feedparser` — RSS feed parsing
 - `pyyaml` — Config file parsing
 - `httpx` — HTTP client for Slack webhook
