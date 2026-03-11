@@ -1,0 +1,16 @@
+summarizer:
+  primary: notebooklm
+  fallback: claude
+
+slack:
+  webhook_url: ${SLACK_WEBHOOK_URL}
+
+notebooklm:
+  # notebooklm-py uses cookie-based auth stored in its own config
+  # See: https://github.com/teng-lin/notebooklm-py#authentication
+  enabled: true
+
+claude:
+  model: claude-sonnet-4-20250514
+
+db_path: ~/.yt-digest/data.db
