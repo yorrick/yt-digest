@@ -1,0 +1,25 @@
+[project]
+name = "yt-digest"
+version = "0.1.0"
+description = "Daily YouTube channel monitor with AI-powered summaries"
+requires-python = ">=3.10"
+dependencies = [
+    "notebooklm-py>=0.1.0",
+    "claude-code-sdk>=0.0.10",
+    "pydantic>=2.0.0",
+    "httpx>=0.27.0",
+    "youtube-transcript-api>=0.6.0",
+    "python-dotenv>=1.0.0",
+    "pyyaml>=6.0.0",
+    "loguru>=0.7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"

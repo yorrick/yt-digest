@@ -1,0 +1,10 @@
+.dev-loop/
+.worktrees/
+__pycache__/
+*.pyc
+.env
+*.db
+.pytest_cache/
+dist/
+*.egg-info/
+.venv/
