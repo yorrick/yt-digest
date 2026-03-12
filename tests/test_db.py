@@ -160,6 +160,51 @@ def test_get_unprocessed_videos_excludes_exhausted(db):
     assert "bad1" not in video_ids
 
 
+def test_get_exhausted_videos(db):
+    channel = ChannelInfo(
+        name="Fireship",
+        youtube_handle="@Fireship",
+        channel_id="UCsBjURrPoezykLs9EqgamOA",
+    )
+    db.insert_channel(channel)
+    channels = db.get_active_channels()
+    channel_pk = channels[0]["id"]
+
+    v1 = VideoInfo(
+        video_id="exhausted1",
+        channel_pk=channel_pk,
+        title="Exhausted Video",
+        published_at=datetime(2026, 3, 11, tzinfo=timezone.utc),
+    )
+    db.insert_video(v1)
+    for _ in range(3):
+        db.increment_fail_count("exhausted1")
+
+    v2 = VideoInfo(
+        video_id="normal1",
+        channel_pk=channel_pk,
+        title="Normal Video",
+        published_at=datetime(2026, 3, 11, tzinfo=timezone.utc),
+    )
+    db.insert_video(v2)
+
+    v3 = VideoInfo(
+        video_id="exhausted_done",
+        channel_pk=channel_pk,
+        title="Already Done",
+        published_at=datetime(2026, 3, 11, tzinfo=timezone.utc),
+    )
+    db.insert_video(v3)
+    for _ in range(3):
+        db.increment_fail_count("exhausted_done")
+    db.mark_processed(["exhausted_done"], "uncategorized")
+
+    exhausted = db.get_exhausted_videos()
+    video_ids = [r["video_id"] for r in exhausted]
+    assert video_ids == ["exhausted1"]
+    assert exhausted[0]["channel_name"] == "Fireship"
+
+
 def test_store_summary_and_mark_processed(db):
     channel = ChannelInfo(
         name="Fireship",
