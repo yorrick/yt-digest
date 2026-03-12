@@ -75,6 +75,27 @@ def test_get_unprocessed_videos(db):
     assert unprocessed[0]["video_id"] == "abc123"
 
 
+from yt_digest.db import MAX_SUMMARIZATION_ATTEMPTS
+
+
+def test_max_summarization_attempts_is_three():
+    assert MAX_SUMMARIZATION_ATTEMPTS == 3
+
+
+def test_init_adds_summarization_fail_count_column(db):
+    """Column exists after init (already called by fixture)."""
+    with db._connect() as conn:
+        row = conn.execute(
+            "SELECT summarization_fail_count FROM videos LIMIT 0"
+        ).fetchone()
+    # No error means column exists
+
+
+def test_init_is_idempotent(db):
+    """Calling init twice doesn't crash (migration is safe to re-run)."""
+    db.init()  # second call — fixture already called init once
+
+
 def test_store_summary_and_mark_processed(db):
     channel = ChannelInfo(
         name="Fireship",

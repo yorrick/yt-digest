@@ -5,6 +5,8 @@ from pathlib import Path
 
 from yt_digest.models import ChannelInfo, VideoInfo
 
+MAX_SUMMARIZATION_ATTEMPTS = 3
+
 
 class Database:
     def __init__(self, db_path: str):
@@ -41,6 +43,13 @@ class Database:
                     processed_at TIMESTAMP
                 );
             """)
+            # Migration: add summarization_fail_count if missing
+            try:
+                conn.execute(
+                    "ALTER TABLE videos ADD COLUMN summarization_fail_count INTEGER NOT NULL DEFAULT 0"
+                )
+            except sqlite3.OperationalError:
+                pass  # column already exists
 
     def insert_channel(self, channel: ChannelInfo) -> None:
         with self._connect() as conn:
