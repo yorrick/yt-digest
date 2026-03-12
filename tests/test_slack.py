@@ -75,3 +75,26 @@ def test_split_messages_over_limit():
     assert len(parts) > 1
     for part in parts:
         assert len(part) <= 3000
+
+
+from yt_digest.slack import strip_reference_markers
+
+
+def test_strip_single_reference():
+    assert strip_reference_markers("some text [1] more") == "some text  more"
+
+
+def test_strip_multi_reference():
+    assert strip_reference_markers("text [2, 3] end") == "text  end"
+
+
+def test_strip_many_references():
+    assert strip_reference_markers("a [1] b [7, 8, 9] c [12] d") == "a  b  c  d"
+
+
+def test_strip_preserves_four_digit_years():
+    assert strip_reference_markers("in [2024] the year") == "in [2024] the year"
+
+
+def test_strip_no_markers():
+    assert strip_reference_markers("plain text") == "plain text"

@@ -1,10 +1,16 @@
 # yt_digest/slack.py
+import re
 from datetime import date
 
 import httpx
 from loguru import logger
 
 from yt_digest.models import VideoSummary, ClusterResult
+
+def strip_reference_markers(text: str) -> str:
+    """Remove NotebookLM-style reference markers like [1], [2, 3] but not 4-digit years like [2024]."""
+    return re.sub(r"\[\d{1,2}(?:,\s*\d{1,2})*\]", "", text)
+
 
 EMOJI_MAP = {
     0: "\U0001f916",  # robot
