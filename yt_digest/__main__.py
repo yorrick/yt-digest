@@ -12,7 +12,7 @@ from yt_digest.db import Database
 from yt_digest.fetcher import fetch_new_videos
 from yt_digest.clusterer import cluster_summaries
 from yt_digest.models import VideoSummary
-from yt_digest.slack import format_digest, format_no_content_message, post_to_slack
+from yt_digest.slack import format_video_message, format_no_content_message, post_to_slack
 from yt_digest.summarizer import FallbackSummarizer
 from yt_digest.summarizer.notebooklm import NotebookLMSummarizer
 from yt_digest.summarizer.claude import ClaudeCodeSummarizer
@@ -49,79 +49,106 @@ async def run_pipeline(config: AppConfig, db: Database, dry_run: bool = False) -
     logger.info("Fetching new videos...")
     new_videos = fetch_new_videos(db)
 
-    # Check for unprocessed videos with existing summaries (crash recovery)
-    unprocessed = db.get_unprocessed_videos()
-    videos_needing_summary = [v for v in unprocessed if v["summary"] is None]
-    videos_with_summary = [v for v in unprocessed if v["summary"] is not None]
+    # 2. Insert all new videos immediately (before summarization)
+    for video in new_videos:
+        db.insert_video(video)
+    logger.info("Inserted {} new videos", len(new_videos))
 
-    logger.info(
-        "{} new videos, {} need summaries, {} have summaries from previous run",
-        len(new_videos),
-        len(videos_needing_summary),
-        len(videos_with_summary),
-    )
-
-    # 2. Summarize new videos
+    # 3. Summarize all unprocessed videos that need summaries
     primary = NotebookLMSummarizer()
     fallback = ClaudeCodeSummarizer(model=config.claude.model)
     summarizer = FallbackSummarizer(primary, fallback)
 
-    for video in new_videos:
-        url = video.url
-        video_id = video.video_id
+    to_summarize = [v for v in db.get_unprocessed_videos() if v["summary"] is None]
+    for video_row in to_summarize:
+        video_id = video_row["video_id"]
+        url = video_row["url"]
         try:
             summary, backend = await summarizer.summarize(url)
-            db.insert_video(video)
             db.store_summary(video_id, summary, backend)
             logger.info("Summarized {} via {}", video_id, backend)
         except Exception as e:
-            logger.warning("Failed to summarize {}, skipping: {}", video_id, e)
+            db.increment_fail_count(video_id)
+            logger.warning("Failed to summarize {} (attempt {}): {}", video_id, video_row["summarization_fail_count"] + 1, e)
 
-    # Also re-summarize any previously inserted but unsummarized videos (crash recovery)
-    for video_row in videos_needing_summary:
-        url = video_row["url"]
-        video_id = video_row["video_id"]
-        try:
-            summary, backend = await summarizer.summarize(url)
-            db.store_summary(video_id, summary, backend)
-            logger.info("Summarized {} via {} (retry)", video_id, backend)
-        except Exception as e:
-            logger.warning("Failed to summarize {} on retry, marking unavailable: {}", video_id, e)
-            db.store_summary(video_id, "Summary unavailable", "none")
+    # 4. Handle exhausted videos (failed 3+ times) — post as link-only
+    exhausted = db.get_exhausted_videos()
+    if exhausted:
+        logger.info("Posting {} exhausted videos as link-only", len(exhausted))
+    for row in exhausted:
+        video = VideoSummary(
+            video_id=row["video_id"],
+            title=row["title"],
+            url=row["url"],
+            summary="Summary unavailable",
+            summarizer="none",
+            channel_name=row["channel_name"],
+        )
+        msg = format_video_message(video)
+        if dry_run:
+            print(msg)
+            print()
+        else:
+            try:
+                await post_to_slack(config.slack.webhook_url, [msg])
+                db.mark_processed([row["video_id"]], "uncategorized")
+            except Exception as e:
+                logger.warning("Failed to post exhausted video {} to Slack: {}", row["video_id"], e)
 
-    # 3. Build summaries list from all unprocessed videos
-    all_unprocessed = db.get_unprocessed_videos()
-    cluster_result = None
-    if not all_unprocessed:
-        digest_text = format_no_content_message(date.today())
-    else:
-        summaries = [
-            VideoSummary(
-                video_id=v["video_id"],
-                title=v["title"],
-                url=v["url"],
-                summary=v["summary"],
-                summarizer=v["summarizer"] or "none",
-                channel_name=v["channel_name"],
-            )
-            for v in all_unprocessed
-        ]
+    # 5. Gather postable videos (unprocessed with summaries)
+    postable = [v for v in db.get_unprocessed_videos() if v["summary"] is not None]
 
-        # 4. Cluster
-        cluster_result = await cluster_summaries(summaries, model=config.claude.model)
-        digest_text = format_digest(summaries, cluster_result, date.today())
+    if not postable and not exhausted:
+        if dry_run:
+            print(format_no_content_message(date.today()))
+        else:
+            await post_to_slack(config.slack.webhook_url, [format_no_content_message(date.today())])
+        logger.info("Pipeline complete")
+        return
 
-    # 5. Post or print
-    if dry_run:
-        print(digest_text)
-    else:
-        await post_to_slack(config.slack.webhook_url, digest_text)
+    if not postable:
+        logger.info("Pipeline complete")
+        return
 
-    # 6. Mark all as processed
-    if not dry_run and all_unprocessed and cluster_result:
-        for cluster in cluster_result.clusters:
-            video_ids = [all_unprocessed[i]["video_id"] for i in cluster.video_indices]
-            db.mark_processed(video_ids, cluster.name)
+    # 6. Cluster for sort order
+    summaries = [
+        VideoSummary(
+            video_id=v["video_id"],
+            title=v["title"],
+            url=v["url"],
+            summary=v["summary"],
+            summarizer=v["summarizer"] or "none",
+            channel_name=v["channel_name"],
+        )
+        for v in postable
+    ]
+    cluster_result = await cluster_summaries(summaries, model=config.claude.model)
+
+    # Build ordered list: (cluster_index, cluster_name, video_index)
+    clustered_indices: set[int] = set()
+    ordered: list[tuple[int, str, int]] = []
+    for ci, cluster in enumerate(cluster_result.clusters):
+        for vi in sorted(cluster.video_indices, key=lambda i: postable[i]["video_id"]):
+            ordered.append((ci, cluster.name, vi))
+            clustered_indices.add(vi)
+    # Append any unclustered videos
+    for i in range(len(postable)):
+        if i not in clustered_indices:
+            ordered.append((len(cluster_result.clusters), "Other", i))
+
+    # 7. Post to Slack — one message per video
+    for _, cluster_name, vi in ordered:
+        video = summaries[vi]
+        msg = format_video_message(video)
+        if dry_run:
+            print(msg)
+            print()
+        else:
+            try:
+                await post_to_slack(config.slack.webhook_url, [msg])
+                db.mark_processed([video.video_id], cluster_name)
+            except Exception as e:
+                logger.warning("Failed to post {} to Slack: {}", video.video_id, e)
 
     logger.info("Pipeline complete")
 
