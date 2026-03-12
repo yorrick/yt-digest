@@ -106,7 +106,9 @@ class Database:
             return conn.execute(
                 """SELECT v.*, c.name as channel_name
                    FROM videos v JOIN channels c ON v.channel_pk = c.id
-                   WHERE v.processed_at IS NULL"""
+                   WHERE v.processed_at IS NULL
+                   AND v.summarization_fail_count < ?""",
+                (MAX_SUMMARIZATION_ATTEMPTS,),
             ).fetchall()
 
     def store_summary(self, video_id: str, summary: str, summarizer: str) -> None:

@@ -126,6 +126,40 @@ def test_increment_fail_count(db):
     assert row["summarization_fail_count"] == 2
 
 
+def test_get_unprocessed_videos_excludes_exhausted(db):
+    channel = ChannelInfo(
+        name="Fireship",
+        youtube_handle="@Fireship",
+        channel_id="UCsBjURrPoezykLs9EqgamOA",
+    )
+    db.insert_channel(channel)
+    channels = db.get_active_channels()
+    channel_pk = channels[0]["id"]
+
+    v1 = VideoInfo(
+        video_id="good1",
+        channel_pk=channel_pk,
+        title="Good Video",
+        published_at=datetime(2026, 3, 11, tzinfo=timezone.utc),
+    )
+    db.insert_video(v1)
+
+    v2 = VideoInfo(
+        video_id="bad1",
+        channel_pk=channel_pk,
+        title="Bad Video",
+        published_at=datetime(2026, 3, 11, tzinfo=timezone.utc),
+    )
+    db.insert_video(v2)
+    for _ in range(3):
+        db.increment_fail_count("bad1")
+
+    unprocessed = db.get_unprocessed_videos()
+    video_ids = [r["video_id"] for r in unprocessed]
+    assert "good1" in video_ids
+    assert "bad1" not in video_ids
+
+
 def test_store_summary_and_mark_processed(db):
     channel = ChannelInfo(
         name="Fireship",
