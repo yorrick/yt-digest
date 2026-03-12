@@ -1,83 +1,15 @@
 # tests/test_slack.py
+import pytest
+import httpx
 from datetime import date
-from yt_digest.models import VideoSummary, ClusterResult, ClusterGroup
-from yt_digest.slack import format_digest, format_no_content_message, split_messages
-
-
-def _make_summary(
-    idx: int, title: str = "Video", channel: str = "Channel"
-) -> VideoSummary:
-    return VideoSummary(
-        video_id=f"vid{idx}",
-        title=f"{title} {idx}",
-        url=f"https://www.youtube.com/watch?v=vid{idx}",
-        summary=f"Summary of video {idx}. " * 5,
-        summarizer="notebooklm",
-        channel_name=channel,
-    )
-
-
-def test_format_digest_with_clusters():
-    summaries = [
-        _make_summary(0, "AI Video", "Fireship"),
-        _make_summary(1, "Marketing Video", "Greg"),
-    ]
-    clusters = ClusterResult(
-        clusters=[
-            ClusterGroup(name="AI Coding", video_indices=[0]),
-            ClusterGroup(name="Marketing", video_indices=[1]),
-        ]
-    )
-    result = format_digest(summaries, clusters, date(2026, 3, 11))
-    assert "YouTube Digest" in result
-    assert "AI Coding" in result
-    assert "Marketing" in result
-    assert "https://www.youtube.com/watch?v=vid0" in result
+from yt_digest.models import VideoSummary
+from yt_digest.slack import format_no_content_message, strip_reference_markers, format_video_message
 
 
 def test_format_no_content_message():
     msg = format_no_content_message(date(2026, 3, 11))
     assert "No new content today" in msg
     assert "March 11, 2026" in msg
-
-
-def test_format_digest_includes_summary_unavailable():
-    summaries = [
-        VideoSummary(
-            video_id="vid0",
-            title="Broken Video",
-            url="https://www.youtube.com/watch?v=vid0",
-            summary="Summary unavailable",
-            summarizer="none",
-            channel_name="Test",
-        )
-    ]
-    clusters = ClusterResult(
-        clusters=[
-            ClusterGroup(name="Today's Videos", video_indices=[0]),
-        ]
-    )
-    result = format_digest(summaries, clusters, date(2026, 3, 11))
-    assert "Summary unavailable" in result
-
-
-def test_split_messages_under_limit():
-    short_msg = "Short message"
-    assert split_messages(short_msg) == [short_msg]
-
-
-def test_split_messages_over_limit():
-    # Create a message with multiple cluster sections
-    sections = "\n\n".join(f"*Section {i}*\n" + "x" * 500 for i in range(10))
-    header = "Header\n\n"
-    full = header + sections
-    parts = split_messages(full, max_chars=3000)
-    assert len(parts) > 1
-    for part in parts:
-        assert len(part) <= 3000
-
-
-from yt_digest.slack import strip_reference_markers
 
 
 def test_strip_single_reference():
@@ -98,3 +30,51 @@ def test_strip_preserves_four_digit_years():
 
 def test_strip_no_markers():
     assert strip_reference_markers("plain text") == "plain text"
+
+
+def test_format_video_message_with_summary():
+    video = VideoSummary(
+        video_id="vid1",
+        title="Cool AI Video",
+        url="https://www.youtube.com/watch?v=vid1",
+        summary="This video covers AI agents [1] and tools [2, 3].",
+        summarizer="notebooklm",
+        channel_name="Fireship",
+    )
+    result = format_video_message(video)
+    assert "*Cool AI Video*" in result
+    assert "(Fireship)" in result
+    assert "This video covers AI agents  and tools ." in result
+    assert "[1]" not in result
+    assert "https://www.youtube.com/watch?v=vid1" in result
+
+
+def test_format_video_message_unavailable():
+    video = VideoSummary(
+        video_id="vid2",
+        title="Broken Video",
+        url="https://www.youtube.com/watch?v=vid2",
+        summary="Summary unavailable",
+        summarizer="none",
+        channel_name="Test",
+    )
+    result = format_video_message(video)
+    assert "*Broken Video*" in result
+    assert "\u26a0\ufe0f Summary unavailable" in result
+    assert "https://www.youtube.com/watch?v=vid2" in result
+
+
+@pytest.mark.asyncio
+async def test_post_to_slack_sends_each_message(monkeypatch):
+    sent = []
+
+    async def mock_post(self, url, *, json, timeout):
+        sent.append(json["text"])
+        return httpx.Response(200, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(httpx.AsyncClient, "post", mock_post)
+
+    from yt_digest.slack import post_to_slack
+
+    await post_to_slack("https://hooks.example.com/test", ["msg1", "msg2", "msg3"])
+    assert sent == ["msg1", "msg2", "msg3"]
