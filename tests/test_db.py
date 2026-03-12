@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 import pytest
 
+from yt_digest.db import MAX_SUMMARIZATION_ATTEMPTS
 from yt_digest.models import ChannelInfo, VideoInfo
 
 
@@ -74,8 +75,6 @@ def test_get_unprocessed_videos(db):
     assert len(unprocessed) == 1
     assert unprocessed[0]["video_id"] == "abc123"
 
-
-from yt_digest.db import MAX_SUMMARIZATION_ATTEMPTS
 
 
 def test_max_summarization_attempts_is_three():
