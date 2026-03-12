@@ -94,6 +94,13 @@ class Database:
                 "SELECT * FROM videos WHERE video_id = ?", (video_id,)
             ).fetchone()
 
+    def increment_fail_count(self, video_id: str) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "UPDATE videos SET summarization_fail_count = summarization_fail_count + 1 WHERE video_id = ?",
+                (video_id,),
+            )
+
     def get_unprocessed_videos(self) -> list[sqlite3.Row]:
         with self._connect() as conn:
             return conn.execute(

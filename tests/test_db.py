@@ -96,6 +96,36 @@ def test_init_is_idempotent(db):
     db.init()  # second call — fixture already called init once
 
 
+def test_increment_fail_count(db):
+    channel = ChannelInfo(
+        name="Fireship",
+        youtube_handle="@Fireship",
+        channel_id="UCsBjURrPoezykLs9EqgamOA",
+    )
+    db.insert_channel(channel)
+    channels = db.get_active_channels()
+    channel_pk = channels[0]["id"]
+
+    video = VideoInfo(
+        video_id="fail1",
+        channel_pk=channel_pk,
+        title="Failing Video",
+        published_at=datetime(2026, 3, 11, tzinfo=timezone.utc),
+    )
+    db.insert_video(video)
+
+    row = db.get_video("fail1")
+    assert row["summarization_fail_count"] == 0
+
+    db.increment_fail_count("fail1")
+    row = db.get_video("fail1")
+    assert row["summarization_fail_count"] == 1
+
+    db.increment_fail_count("fail1")
+    row = db.get_video("fail1")
+    assert row["summarization_fail_count"] == 2
+
+
 def test_store_summary_and_mark_processed(db):
     channel = ChannelInfo(
         name="Fireship",
