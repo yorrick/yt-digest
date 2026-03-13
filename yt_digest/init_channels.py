@@ -21,6 +21,7 @@ INITIAL_CHANNELS = [
     ("Claude", "@claude"),
     ("EO Global", "@eoglobal"),
     ("Nate B Jones", "@NateBJones"),
+    ("The Boring Marketer", "@theboringmarketer"),
 ]
 
 
