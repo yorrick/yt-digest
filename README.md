@@ -2,6 +2,8 @@
 
 Monitors YouTube channel RSS feeds, downloads captions through Apify, and uses DeepSeek V4.1 Flash through OpenRouter to summarize and group videos before the daily Slack digest.
 
+Each video gets a viewing preview: three short sentences, up to 65 words, covering the topic, a concrete detail, and what the viewer can learn. The goal is to quickly decide which videos to watch.
+
 ## Setup
 
 ```fish
