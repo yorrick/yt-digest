@@ -125,7 +125,7 @@ def test_increment_fail_count(db):
     assert row["summarization_fail_count"] == 2
 
 
-def test_get_unprocessed_videos_excludes_exhausted(db):
+def test_get_unprocessed_videos_includes_previously_exhausted(db):
     channel = ChannelInfo(
         name="Fireship",
         youtube_handle="@Fireship",
@@ -156,7 +156,7 @@ def test_get_unprocessed_videos_excludes_exhausted(db):
     unprocessed = db.get_unprocessed_videos()
     video_ids = [r["video_id"] for r in unprocessed]
     assert "good1" in video_ids
-    assert "bad1" not in video_ids
+    assert "bad1" in video_ids
 
 
 def test_get_exhausted_videos(db):

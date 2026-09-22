@@ -6,6 +6,8 @@ from pathlib import Path
 from yt_digest.models import ChannelInfo, VideoInfo
 
 MAX_SUMMARIZATION_ATTEMPTS = 3
+# Legacy exhaustion helpers below are retained for inspecting historical data.
+# The active pipeline does not increment these counts or exhaust videos.
 
 
 class Database:
@@ -107,8 +109,7 @@ class Database:
                 """SELECT v.*, c.name as channel_name
                    FROM videos v JOIN channels c ON v.channel_pk = c.id
                    WHERE v.processed_at IS NULL
-                   AND v.summarization_fail_count < ?""",
-                (MAX_SUMMARIZATION_ATTEMPTS,),
+                   ORDER BY v.published_at, v.video_id""",
             ).fetchall()
 
     def get_exhausted_videos(self) -> list[sqlite3.Row]:

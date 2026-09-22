@@ -8,15 +8,15 @@ def test_load_config_from_yaml(tmp_path, monkeypatch):
 slack:
   webhook_url: ${SLACK_WEBHOOK_URL}
 
-claude:
-  model: claude-sonnet-4-20250514
+openrouter:
+  model: deepseek/deepseek-v4.1-flash
 
 db_path: ~/.yt-digest/data.db
 """)
     monkeypatch.setenv("SLACK_WEBHOOK_URL", "https://hooks.slack.com/test")
     config = load_config(str(config_file))
     assert config.slack.webhook_url == "https://hooks.slack.com/test"
-    assert config.claude.model == "claude-sonnet-4-20250514"
+    assert config.openrouter.model == "deepseek/deepseek-v4.1-flash"
 
 
 def test_config_env_var_substitution(tmp_path, monkeypatch):
@@ -25,8 +25,8 @@ def test_config_env_var_substitution(tmp_path, monkeypatch):
 slack:
   webhook_url: ${SLACK_WEBHOOK_URL}
 
-claude:
-  model: claude-sonnet-4-20250514
+openrouter:
+  model: deepseek/deepseek-v4.1-flash
 
 db_path: /tmp/test.db
 """)
