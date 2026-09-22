@@ -1,160 +1,62 @@
 # yt-digest
 
-Daily YouTube channel monitor that summarizes new videos and posts a clustered digest to Slack.
-
-## How it works
-
-1. Fetches RSS feeds from monitored YouTube channels
-2. Summarizes new videos using NotebookLM (falls back to Claude Code SDK)
-3. Clusters summaries by topic using Claude
-4. Posts a grouped digest to Slack
-
-## Architecture
-
-```mermaid
-flowchart LR
-    A[RSS Feeds] --> B[Fetcher]
-    B --> C[SQLite DB]
-    C --> D[Summarizer]
-    D -->|Primary| E[NotebookLM]
-    D -->|Fallback| F[Claude Code SDK]
-    D --> G[Clusterer]
-    G --> H[Slack Poster]
-```
+Monitors YouTube channel RSS feeds, downloads captions through Apify, and uses DeepSeek V4.1 Flash through OpenRouter to summarize and group videos before the daily Slack digest.
 
 ## Setup
 
-```bash
-# Clone
-git clone https://github.com/yorrick/yt-digest.git
-cd yt-digest
-
-# Install
-uv sync --all-extras
-
-# Configure
+```fish
+uv sync --all-extras --frozen
 cp .env.example .env
-# Edit .env with your Slack webhook URL
+```
 
-# Initialize database and seed channels
+Set `SLACK_WEBHOOK_URL` in `.env`. The daily service sources `~/.ssh/apify.sh` and `~/.ssh/openrouter-aura.sh`, which must export `APIFY_API_KEY` and `OPENROUTER_API_KEY`, respectively. Restrict those scripts to the account owner with `chmod 600`. Never commit credentials.
+
+```fish
 uv run python -m yt_digest --init
-
-# Test run (prints to stdout)
-uv run python -m yt_digest --dry-run
-
-# Production run
-uv run python -m yt_digest
+./scripts/run-digest.sh --dry-run
 ```
 
-## CLI Options
-
-| Option | Description |
-|--------|-------------|
-| `--init` | Initialize DB and seed channels from YouTube handles |
-| `--dry-run` | Print digest to stdout instead of posting to Slack |
-| `--config PATH` | Path to config file (default: `config.yaml`) |
-
-## Ubuntu Desktop Deployment
-
-### Install
-
-```bash
-mkdir -p ~/work && cd ~/work
-git clone git@github.com:yorrick/yt-digest.git
-cd yt-digest
-uv sync --all-extras
-```
-
-### Configure
-
-```bash
-# Create .env with your Slack webhook URL
-cp .env.example .env
-# Edit .env
-
-# (Optional) Set up NotebookLM as primary summarizer
-uv run notebooklm login
-# Auth token is stored in ~/.notebooklm/storage_state.json
-
-# Initialize database and seed channels
-uv run python -m yt_digest --init
-```
-
-### Systemd Timer (daily at 8am)
-
-Create the service unit:
-
-```ini
-# ~/.config/systemd/user/yt-digest.service
-[Unit]
-Description=Fetch new YouTube videos, summarize, and post digest to Slack
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=oneshot
-WorkingDirectory=/home/youruser/work/yt-digest
-ExecStartPre=/usr/bin/git pull
-ExecStart=/home/youruser/.local/bin/uv run python -m yt_digest
-TimeoutStartSec=900
-
-[Install]
-WantedBy=default.target
-```
-
-Create the timer unit:
-
-```ini
-# ~/.config/systemd/user/yt-digest.timer
-[Unit]
-Description=Run yt-digest daily at 8am
-
-[Timer]
-OnCalendar=*-*-* 08:00:00
-RandomizedDelaySec=5min
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-```
-
-Enable and start:
-
-```bash
-systemctl --user daemon-reload
-systemctl --user enable --now yt-digest.timer
-
-# Verify
-systemctl --user list-timers yt-digest.timer
-
-# Manual test run
-systemctl --user start yt-digest.service
-
-# Check logs
-journalctl --user -u yt-digest.service
-```
-
-The service runs `git pull` before each execution, so pushing changes to the repo automatically deploys them.
-
-## Requirements
-
-- Python 3.10+
-- Claude Code CLI (for Max subscription auth)
-- Slack Incoming Webhook
-- NotebookLM account (optional, for primary summarizer)
+`--dry-run` prints messages instead of posting to Slack. It still fetches videos and stores summaries in the configured database, and uses paid APIs. For isolated QA, pass `--config` pointing at a config with a copied database.
 
 ## Configuration
 
-Edit `config.yaml` to customize:
-- Summarizer selection (primary/fallback)
-- Claude model
-- Database path
+`config.yaml` selects the OpenRouter model and request timeout, the Apify server timeout and per-video charge cap, the database path, and the Slack webhook environment variable. Channels live in SQLite, with initial channels defined in `yt_digest/init_channels.py`.
 
-Secrets go in `.env` (gitignored).
+The transcript source is explicitly `pintostudio/youtube-transcript-scraper` on Apify, using English captions only. It does not request paid speech transcription or AI summaries. The summary model is explicitly `deepseek/deepseek-v4.1-flash`, served by DeepInfra with OpenRouter provider failover disabled. The same model groups summaries by topic. NotebookLM cookies and Claude Code login are no longer required.
+
+A live caption download of the reported video on September 22, 2026 cost $0.01. The configured $0.05 cap bounds each per-video Apify run, not the total daily batch; model usage is billed separately by OpenRouter. Caption behavior and pricing are documented by [Apify](https://apify.com/pintostudio/youtube-transcript-scraper); model pricing is published by [OpenRouter](https://openrouter.ai/deepseek/deepseek-v4.1-flash).
+
+## Failure handling
+
+A video is marked processed only after a successful Slack post. Failed caption downloads, empty responses, model errors, and oversized transcripts remain pending for the next daily run. The service exits unsuccessfully if any summaries failed, while still delivering summaries that succeeded. Videos without usable English captions also remain pending, since an empty scraper response cannot reliably distinguish missing captions from upstream blocking.
+
+The pipeline no longer posts `Summary unavailable` or permanently exhausts videos after three service failures. Historical failure counts are retained but no longer exclude pending videos. Previously posted history is untouched. Full transcripts are sent without silent truncation; transcripts above 500,000 characters remain pending with an explicit log message.
+
+## Ubuntu deployment
+
+The app runs on `ssh ubuntu-desktop` in `~/work/yt-digest`; its database is `~/.yt-digest/data.db`. Install the service after placing the credential scripts and Slack webhook on that host:
+
+```fish
+chmod +x scripts/run-digest.sh
+mkdir -p ~/.config/systemd/user
+cp deploy/yt-digest.service ~/.config/systemd/user/yt-digest.service
+systemctl --user daemon-reload
+systemctl --user enable --now yt-digest.timer
+systemctl --user list-timers yt-digest.timer
+```
+
+Keep the existing daily timer. The service pulls its checked-out branch using `git pull --ff-only` before each run. If deploying a reviewed PR branch before merge, keep it tracking that remote branch; after the PR is merged, explicitly return the checkout to `main`:
+
+```fish
+cd ~/work/yt-digest
+git switch main
+git pull --ff-only
+```
+
+Logs are in `journalctl --user -u yt-digest.service` and `~/.yt-digest/yt-digest.log`. The one-hour service timeout accommodates sequential hosted caption downloads. Check that a run is inactive before changing its checkout.
 
 ## Testing
 
-```bash
-uv sync --all-extras
-uv run pytest -v
+```fish
+uv run pytest -q
 ```

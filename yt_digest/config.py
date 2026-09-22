@@ -5,20 +5,28 @@ from pathlib import Path
 
 import yaml
 from dotenv import load_dotenv
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class SlackConfig(BaseModel):
     webhook_url: str
 
 
-class ClaudeConfig(BaseModel):
-    model: str = "claude-sonnet-4-20250514"
+class OpenRouterConfig(BaseModel):
+    model: str = "deepseek/deepseek-v4.1-flash"
+    provider: str = "deepinfra"
+    timeout: float = Field(default=90, gt=0)
+
+
+class ApifyConfig(BaseModel):
+    timeout: int = Field(default=120, ge=1, le=300)
+    max_charge_usd: float = Field(default=0.05, gt=0)
 
 
 class AppConfig(BaseModel):
     slack: SlackConfig
-    claude: ClaudeConfig = ClaudeConfig()
+    openrouter: OpenRouterConfig = Field(default_factory=OpenRouterConfig)
+    apify: ApifyConfig = Field(default_factory=ApifyConfig)
     db_path: str = "~/.yt-digest/data.db"
 
 

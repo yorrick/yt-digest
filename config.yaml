@@ -1,16 +1,13 @@
-summarizer:
-  primary: notebooklm
-  fallback: claude
-
 slack:
   webhook_url: ${SLACK_WEBHOOK_URL}
 
-notebooklm:
-  # notebooklm-py uses cookie-based auth stored in its own config
-  # See: https://github.com/teng-lin/notebooklm-py#authentication
-  enabled: true
+openrouter:
+  model: deepseek/deepseek-v4.1-flash
+  provider: deepinfra
+  timeout: 90
 
-claude:
-  model: claude-sonnet-4-20250514
+apify:
+  timeout: 120
+  max_charge_usd: 0.05
 
 db_path: ~/.yt-digest/data.db
