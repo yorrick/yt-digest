@@ -6,6 +6,8 @@ The replacement uses `pintostudio/youtube-transcript-scraper` for English captio
 
 An Ubuntu run on a copy of the production database generated real summaries for `71-8fJIGi34` (the reported video), `bA8WeHYmJko` (the caption-block reproduction), and `AgzVxj_ztiA` (a short). It produced 5,977 characters of formatted messages, clustered the three summaries, asserted zero Slack calls, and left their processed timestamps unset. The local suite passes 72 tests. Historical processed rows remain untouched.
 
+After deployment, the actual service wrapper completed a production `--dry-run` successfully. It fetched one new RSS video and generated all 16 pending summaries with DeepSeek, then formatted 16 messages. They are cached in the production database for the next daily delivery. A comparison with the backup verified that every previously processed timestamp was unchanged, and all 16 pending rows still have unset processed timestamps.
+
 ## Cross-AI review
 
 Reviewer: Claude Code, Claude Opus 5, high effort. These three commands completed successfully with exit status 0; they reviewed the supplied plan or source payloads, with external tools disabled. The files are local investigation artifacts in `/tmp/yt-digest-investigation`.
@@ -22,4 +24,4 @@ Rejected after checking: the no-content branch already propagates delivery error
 
 ## Deployment state
 
-Deploy the reviewed `fix/deepseek-digest-summaries` branch to the Ubuntu checkout, tracking its remote branch. Keep the existing daily timer and install `deploy/yt-digest.service`. The service sources owner-only API credential scripts and permits an hour for caption downloads. Return production to `main` only after the PR is merged with the user's authorization; commands are in the README. Do not restart the service to send test Slack messages; use `--dry-run` for verification.
+The reviewed `fix/deepseek-digest-summaries` branch is deployed to the Ubuntu checkout and tracks its remote branch. PR #3 remains open and unmerged: https://github.com/yorrick/yt-digest/pull/3. The existing daily timer is enabled and uses the installed `deploy/yt-digest.service`; systemd unit verification and all 72 tests passed on Ubuntu. The pre-deployment database backup is `~/.yt-digest/data-before-deepseek-20260922.db`. The service sources owner-only API credential scripts and permits an hour for caption downloads. Return production to `main` only after the PR is merged with the user's authorization; commands are in the README. Do not restart the service to send test Slack messages; use `--dry-run` for verification.
